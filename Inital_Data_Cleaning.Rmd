@@ -1,0 +1,222 @@
+---
+title: "Initial Data Cleaning"
+output: html_notebook
+---
+
+```{r}
+raw = read.csv("Traffic_Crashes_-_Crashes.csv") #load raw data
+```
+```{r}
+set.seed(42)
+sampleraw = slice_sample(raw, n = 100000) #making raw easier to work with for now
+```
+
+Need to add Os for Null values: HIT_AND_RUN_I, WORK_ZONE_I
+
+```{r} 
+#turns hit and run into a binary, replaces missing values with zero
+binhitrun = replace(sampleraw$HIT_AND_RUN_I, sampleraw$HIT_AND_RUN_I == "", as.integer(0))
+binhitrun = replace(binhitrun, binhitrun == "N", as.integer(0))
+binhitrun = replace(binhitrun, binhitrun == "Y", as.integer(1))
+
+sampleraw$HIT_AND_RUN_I = as.integer(binhitrun)
+```
+
+```{r}
+#turns work zone into a binary, replaces missing values with zero
+binworkz = replace(sampleraw$WORK_ZONE_I, sampleraw$WORK_ZONE_I == "", as.integer(0))
+binworkz = replace(binworkz,  binworkz == "N", as.integer(0))
+binworkz = replace(binworkz, binworkz == "Y", as.integer(1))
+
+sampleraw$WORK_ZONE_I = as.integer(binworkz)
+```
+
+Ordinal Variables to label encode: LIGHTING_CONDITION, ROADWAY_SURFACE_COND, DEVICE_CONDITION, ROAD_DEFECT, DAMAGE, MOST_SEVERE_INJURY
+
+#lighting condition
+```{r}
+unique_categories <- unique(sampleraw$LIGHTING_CONDITION)
+print(unique_categories)
+```
+
+```{r}
+custom_order <- c("UNKNOWN", "DAYLIGHT", "DAWN", "DUSK", "DARKNESS, LIGHTED ROAD", "DARKNESS" )
+```
+
+```{r}
+sampleraw$LIGHTING_CONDITION <- as.integer(factor(sampleraw$LIGHTING_CONDITION, levels = custom_order))
+```
+
+#Roadway surface condition
+```{r}
+unique_categories <- unique(sampleraw$ROADWAY_SURFACE_COND)
+custom_order = c("OTHER", "UNKNOWN", "DRY","WET", "SNOW OR SLUSH" , "ICE" )
+sampleraw$ROADWAY_SURFACE_COND =  as.integer(factor(sampleraw$ROADWAY_SURFACE_COND, levels = custom_order))
+```
+
+
+#Weather Condition: will remove because it likely be correlated with roadway surface condition
+```{r}
+unique_categories <- unique(sampleraw$WEATHER_CONDITION)
+print(unique_categories)
+```
+#device condition
+```{r}
+unique_categories <- unique(sampleraw$DEVICE_CONDITION)
+custom_order = c("OTHER", "NO CONTROLS", "UNKNOWN", "FUNCTIONING PROPERLY", "FUNCTIONING IMPROPERLY",  "NOT FUNCTIONING", "MISSING" )
+sampleraw$DEVICE_CONDITION =  as.integer(factor(sampleraw$DEVICE_CONDITION, levels = custom_order))
+```
+
+#ROAD_DEFECT
+```{r}
+unique_categories <- unique(sampleraw$ROAD_DEFECT)
+custom_order = c("UNKNOWN", "NO DEFECTS", "OTHER", "WORN SURFACE", "RUT, HOLES", "SHOULDER DEFECT", "DEBRIS ON ROADWAY")
+sampleraw$ROAD_DEFECT =  as.integer(factor(sampleraw$ROAD_DEFECT, levels = custom_order))
+```
+
+#DAMAGE
+```{r}
+unique_categories <- unique(sampleraw$DAMAGE)
+custom_order = c("$500 OR LESS", "$501 - $1,500", "OVER $1,500")
+sampleraw$DAMAGE=  as.integer(factor(sampleraw$DAMAGE, levels = custom_order))
+```
+#MOST_SEVERE_INJURY: will actually remove since it will be correlated with total injuries, fatalities, etc. 
+```{r}
+unique_categories <- unique(sampleraw$MOST_SEVERE_INJURY)
+print(unique_categories)
+
+```
+
+
+Non-ordinal to one hot encode: TRAFFIC_CONTROL_DEVICE,  FIRST_CRASH_TYPE, TRAFFICWAY_TYPE, ALIGNMENT, REPORT_TYPE, PRIM_CONTRIBUTORY_CAUSE, SEC_CONTRIBUTORY_CAUSE, 
+
+```{r}
+# One-hot encode specified columns using model.matrix 
+encoded_data <- model.matrix(~ TRAFFIC_CONTROL_DEVICE + FIRST_CRASH_TYPE + TRAFFICWAY_TYPE +
+                             ALIGNMENT + REPORT_TYPE + 
+                             PRIM_CONTRIBUTORY_CAUSE + SEC_CONTRIBUTORY_CAUSE - 1, 
+                             data = sampleraw)
+
+# Convert the resulting matrix to a data frame
+encoded_data <- as.data.frame(encoded_data)
+
+# Combine the original dataset with the one-hot encoded columns
+sampleraw_encoded <- cbind(sampleraw, encoded_data)
+
+# Optional: Drop the original categorical columns if you no longer need them
+sampleraw_encoded <- sampleraw_encoded[, !(names(sampleraw_encoded) %in% 
+                                           c("TRAFFIC_CONTROL_DEVICE", "FIRST_CRASH_TYPE", 
+                                             "TRAFFICWAY_TYPE", "ALIGNMENT", "REPORT_TYPE", 
+                                             "PRIM_CONTRIBUTORY_CAUSE", "SEC_CONTRIBUTORY_CAUSE"))]
+
+```
+
+
+ 
+
+Iffy to Model On: CRASH_DATE
+
+Remove: CRASH_DATE_EST_I, INTERSECTION_RELATED_I, NOT_RIGHT_OF_WAY_I, DATE_POLICE_NOTIFIED, STREET_NO, STREET_DIRECTION, STREET_NAME, BEAT_OF_OCCURRENCE, PHOTOS_TAKEN_I, STATEMENTS_TAKEN_I, DOORING_I, WORK_ZONE_TYPE, WORKERS_PRESENT_I, INJURIES_UNKNOWN, INJURIES_NO_INDICATION, CRASH_TYPE, WEATHER_CONDITION, MOST_SEVERE_INJURY
+
+```{r}
+sampleraw_encoded <- sampleraw_encoded[, !(names(sampleraw_encoded) %in% 
+                                           c("CRASH_DATE_EST_I", "INTERSECTION_RELATED_I", "NOT_RIGHT_OF_WAY_I", "DATE_POLICE_NOTIFIED", "STREET_NO", "STREET_DIRECTION", "STREET_NAME", "BEAT_OF_OCCURRENCE", "PHOTOS_TAKEN_I", "STATEMENTS_TAKEN_I", "DOORING_I", "WORK_ZONE_TYPE", "WORKERS_PRESENT_I", "INJURIES_UNKNOWN", "INJURIES_NO_INDICATION", "CRASH_TYPE", "WEATHER_CONDITION", "MOST_SEVERE_INJURY", "LATITUDE", "LONGITUDE", "LOCATION", "LANE_CNT", "CRASH_RECORD_ID", "INJURIES_UNKNOWN", "CRASH_DATE"))]
+
+```
+
+```{r}
+find_high_na_columns <- function(data, threshold = 0.5) {
+  # Calculate the proportion of NA values for each column
+  na_proportions <- colMeans(is.na(data))
+  
+  # Identify columns exceeding the threshold
+  high_na_columns <- names(na_proportions[na_proportions > threshold])
+  
+  return(high_na_columns)}
+```
+
+```{r}
+find_high_na_columns(sampleraw_encoded, .5)
+```
+
+Don't Model On: CRASH_RECORD_ID, LATITUDE, LONGITUDE, LOCATION
+```{r}
+sampleraw_encoded = drop_na(sampleraw_encoded) #gets ride of all na's
+nrow(sampleraw_encoded)
+```
+
+```{r}
+# Function to identify columns with fewer than 2 levels
+find_low_level_columns <- function(data) {
+  # Check if each column has fewer than 2 unique, non-NA values
+  low_level_columns <- sapply(data, function(col) {
+    length(unique(na.omit(col))) < 2
+  })
+  
+  # Return column names with fewer than 2 levels
+  names(low_level_columns[low_level_columns])
+}
+
+# Example usage on the sampleraw dataset
+low_level_columns <- find_low_level_columns(sampleraw_encoded)
+
+# Print the problematic columns
+cat("Columns with fewer than 2 levels:\n")
+print(low_level_columns)
+```
+```{r}
+#check to make sure they're all numeric or integers
+#str(sampleraw_encoded)
+
+# Check for factors or characters in numeric columns
+#summary(sampleraw_encoded)
+```
+
+```{r}
+set.seed(41)
+testsample = slice_sample(sampleraw_encoded, n = 80000)
+accuracysample = 
+```
+
+#first logitmod
+
+```{r}
+#install.packages("speedglm")
+library(speedglm)
+logmod1 = speedglm(HIT_AND_RUN_I ~ ., data = sampleraw_encoded, family = binomial())
+summary(logmod1)
+```
+```{r}
+library(glmnet)
+
+# Separate y and predictors
+y <- testsample$HIT_AND_RUN_I  # Response variable
+x <- as.matrix(testsample[, setdiff(names(testsample), "HIT_AND_RUN_I")])  # All other columns are predictors
+
+# Fit LASSO model
+lasso_model <- glmnet(x, y, alpha = 1, family = "binomial")
+
+# Cross-validation to find the best lambda
+cv_model <- cv.glmnet(x, y, alpha = 1, family = "binomial")
+
+# Optimal lambda and coefficients
+best_lambda <- cv_model$lambda.min
+selected_coefficients <- coef(cv_model, s = best_lambda)
+print(selected_coefficients)
+
+```
+```{r}
+
+```
+
+
+#STEPWISE regression selection time
+```{r}
+library(MASS)
+full_model = speedglm(HIT_AND_RUN_I ~ ., data = sampleraw_encoded, family = binomial(), model=TRUE, y=TRUE, fitted=TRUE)
+
+stepwise_model <- stepAIC(full_model, direction = "both", Trace = FALSE)
+
+
+```
+
