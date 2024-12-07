@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script>
+        L_NO_TOUCH = false;
+        L_DISABLE_3D = false;
+    </script>
+    <style>html, body {width: 100%;height: 100%;margin: 0;padding: 0;}</style>
+    <style>#map {position:absolute;top:0;bottom:0;right:0;left:0;}</style>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+</head>
+<body>
+    <div id="map" style="width: 100%; height: 100%;"></div>
+    <script>
+        var map = L.map('map', {
+            center: [41.823830294400004, -87.65186897656002],
+            zoom: 11,
+        });
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Feature group for high severity
+        var featureGroup1 = L.featureGroup().addTo(map);
+        var highSeverityPoints = [
+            [41.744151639, -87.585945067],
+            [41.958986951, -87.933993929],
+            [41.866501191, -87.686157599],
+            [41.817683733, -87.6650402],
+            [41.735617968, -87.682663369],
+            [41.903536788, -87.661859583],
+            [41.920676631, -87.775630269],
+            [41.858908833, -87.729904272],
+            [41.765563782, -87.624825828],
+            [41.75616061, -87.634583596],
+            [41.938266954, -87.795761499],
+            [41.784385694, -87.740065946],
+            [41.931607951, -87.697755776],
+            [41.794908912, -87.616471792],
+            [41.953203301, -87.756048735],
+            [41.844607515, -87.694804642],
+            [41.756693844, -87.61502407],
+            [41.751611523, -87.585592284],
+            [41.765485412, -87.621834351],
+            [41.975438394, -87.748145166]
+        ];
+        highSeverityPoints.forEach(point => {
+            L.circleMarker(point, {
+                color: 'red',
+                fillColor: 'red',
+                radius: 5,
+                fillOpacity: 0.6
+            }).addTo(featureGroup1);
+        });
+
+        // Feature group for low severity
+        var featureGroup2 = L.featureGroup().addTo(map);
+        var lowSeverityPoints = [
+            [41.809781151, -87.594212812],
+            [41.744151639, -87.585945067],
+            [41.758245505, -87.626521907],
+            [41.921729807, -87.663234201],
+            [41.891293713, -87.647680593],
+            [41.903639931, -87.65554697],
+            [41.808749374, -87.66230696],
+            [41.931607951, -87.697755776],
+            [41.785387445, -87.606183761],
+            [41.995579197, -87.675876884],
+            [41.74579217, -87.635369997],
+            [41.749903242, -87.707348392],
+            [41.894706184, -87.632422292],
+            [41.882211292, -87.710898608],
+            [41.876926589, -87.745039137],
+            [41.924490094, -87.717288131],
+            [41.893918609, -87.624085833]
+        ];
+        lowSeverityPoints.forEach(point => {
+            L.circleMarker(point, {
+                color: 'blue',
+                fillColor: 'blue',
+                radius: 5,
+                fillOpacity: 0.6
+            }).addTo(featureGroup2);
+        });
+
+        // Add layers to control
+        L.control.layers({}, {
+            "High Severity (>=2)": featureGroup1,
+            "Low Severity (<=2)": featureGroup2,
+        }, { collapsed: true }).addTo(map);
+    </script>
+</body>
+</html>
